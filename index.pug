@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+html(lang="en")
+  include partials/_head.pug
+
+  body
+    #app.form-wrap.bg-light
+      form
+        h1.text-center 登入
+        label(for="inputEmail") Email
+        input#email.form-control(type="email" placeholder="請輸入 Email" v-model="auth.email" required="required")
+        label(for="password") 密碼
+        input#password.form-control(type="password" placeholder="請輸入密碼" v-model="auth.password" required="required")
+        button.btn.btn-lg.btn-primary.btn-block.my-3(type="submit" @click.prevent="login") 確定登入
+
+  include partials/_script.pug
+  script(src="js/index.js")

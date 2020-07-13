@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+html(lang="en")
+  include partials/_head.pug
+
+  body
+
+    #app.container.my-5
+      loading(:active.sync="isLoading" :is-full-page="true")
+
+      div.mb-3.text-right
+        input.btn.btn-primary.mb-3(type="button" value="新增產品" @click="openModal('new')")
+        table.table.text-center
+          thead
+            tr
+              th(scope="col" width="150") 縮圖
+              th(scope="col") 分類
+              th(scope="col") 產品名稱
+              th(scope="col") 原價
+              th(scope="col") 售價
+              th(scope="col") 是否啟用
+              th(scope="col") 編輯
+          tbody
+            tr(v-for="product in products" :key="product.id")
+              td(v-if="product.imageUrl")
+                //- 兩種背景寫法
+                //- span.thumbnail(:style="{ 'background-image': 'url(' + image + ')' }")
+                //- span.thumbnail(:style="{ backgroundImage: 'url(' + image + ')' }")
+                span.thumbnail(:style="{backgroundImage: 'url(' + product.imageUrl[0] + ')'}")
+              td.align-middle {{product.category}}
+              td.align-middle {{product.title}}
+              td.text-right.align-middle {{product.origin_price}}
+              td.text-right.align-middle {{product.price}}
+              td.align-middle.text-success(v-if="product.enabled") 啟用
+              td.align-middle(v-else) 未啟用
+              td.align-middle
+                .btn-group(role="group")
+                  button.btn.btn-outline-primary.btn-sm(type="button" @click="openModal('edit', product)") 編輯
+                  button.btn.btn-outline-danger.btn-sm(type="button" @click="openModal('del', product)") 刪除
+
+      //- 分頁
+      pagination(:pages="pagination" @get-products="getProducts")
+
+      //- edit modal
+      edit-modal(:user="user" @get-products="getProducts" @change-loading="changeLoading" ref="editModal")
+
+      //- delModal
+      del-modal(:temp-product="tempProduct" :user="user" @get-products="getProducts")
+
+    //- 問題：
+    //-   在 bootstrap Modal 上使用 vue-loading-overlay (getProduct 方法) 報錯 Maximum call stack size exceeded
+    //-   原因 vue-loading-overlay 在執行時不允許聚焦在其他元素(Modal)
+    //- 解決方法：刪除 Modal 的 tabindex="-1" 設定
+    //- 參考：https://github.com/ankurk91/vue-loading-overlay/issues/26
+
+    //- editModal 元件
+    script(type="text/x-template" id="editModal")
+      #editModal.modal.fade(role="dialog" aria-labelledby="editModalLabel" aria-hidden="true")
+        .modal-dialog.modal-xl
+          .modal-content
+            .modal-header.bg-dark.text-light
+              h5.modal-title 新增產品
+              button.close(type="button" data-dismiss="modal" aria-label="Close")
+                span(aria-hidden="true") &times;
+            .modal-body
+              .row
+                .col-4
+                  .custom-file.mb-3
+                    input#customFile.custom-file-input(type="file" accept="image/*" ref="file" @change="uploadFile")
+                    label.custom-file-label(for="customFile") 上傳檔案(不可超過 2 MB)
+                  .form-group
+                    label(for="imageUrl") 請輸入圖片網址
+                    input#imageUrl.form-control(type="text" v-model="tempProduct.imageUrl[0]" placeholder="請輸入圖片網址" required)
+                  img.img-fluid(:src="tempProduct.imageUrl[0]")
+                .col-8
+                  .form-group
+                    label(for="title") 標題
+                    input#title.form-control(type="text" v-model="tempProduct.title" placeholder="請輸入標題" required)
+                  .form-row
+                    .form-group.col-md-6
+                      label(for="category") 分類
+                      input#category.form-control(type="text" v-model="tempProduct.category" placeholder="請輸入分類" required)
+                    .form-group.col-md-6
+                      label(for="unit") 單位
+                      input#unit.form-control(type="text" v-model="tempProduct.unit" placeholder="請輸入單位" required)
+                  .form-row
+                    .form-group.col-md-6
+                      label(for="origin_price") 原價
+                      input#origin_price.form-control(type="number" v-model="tempProduct.origin_price" placeholder="請輸入原價" required)
+                    .form-group.col-md-6
+                      label(for="price") 售價
+                      input#price.form-control(type="number" v-model="tempProduct.price" placeholder="請輸入售價" required)
+                  hr
+                  .form-group
+                    label(for="description") 產品描述
+                    textarea#description.form-control(row="3" v-model="tempProduct.description" placeholder="請輸入產品描述" required)
+                  .form-group
+                    label(for="content") 說明內容
+                    textarea#content.form-control(row="3" v-model="tempProduct.content" placeholder="請輸入說明內容" required)
+                  .form-group.form-check
+                    input#enabled.form-check-input(type="checkbox" v-model="tempProduct.enabled")
+                    label.form-check-label(for="enabled") 使否啟用
+            .modal-footer
+              button.btn.btn-outline-secondary(type="button" data-dismiss="modal") 取消
+              button.btn.btn-primary(type="button" @click="updateProduct()") 儲存
+
+    //- delModal 元件
+    script(type="text/x-template" id="delModal")
+      #delModal.modal.fade(role="dialog" aria-labelledby="delModalLabel" aria-hidden="true")
+          .modal-dialog
+            .modal-content
+              .modal-header.bg-danger.text-light
+                h5.modal-title 確認刪除
+                button.close(type="button" data-dismiss="modal" aria-label="Close")
+                  span(aria-hidden="true") &times;
+              .modal-body
+                | 確定要刪除 {{tempProduct.title}}
+              .modal-footer
+                button.btn.btn-outline-secondary(type="button" data-dismiss="modal") 取消
+                button.btn.btn-outline-danger(type="button" @click="delProduct(tempProduct.id)")
+                  | 確定刪除
+
+    //- pagination 元件
+    script(type="text/x-template" id="pagination")
+      nav
+        ul.pagination.justify-content-center
+          li.page-item(:class="{'disabled': pages.current_page === 1}")
+            a.page-link(href="#" aria-label="Previous" @click.prevent="changePage(pages.current_page-1)")
+              span(aria-hidden="true") &laquo;
+          li.page-item(:class="{'active': n === pages.current_page}" v-for="n in pages.total_pages" :key="n")
+            a.page-link(href="#" @click.prevent="changePage(n)") {{n}}
+          li.page-item(:class="{'disabled': pages.current_page === pages.total_pages}")
+            a.page-link(href="#" aria-label="Next" @click.prevent="changePage(pages.current_page+1)")
+              span(aria-hidden="true") &raquo;
+
+  include partials/_script.pug
+  script(src="js/dashboard.js")
