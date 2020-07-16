@@ -6,7 +6,7 @@ html(lang="en")
     #app.form-wrap.bg-light
       form
         h1.text-center 登入
-        label(for="inputEmail") Email
+        label(for="email") Email
         input#email.form-control(type="email" placeholder="請輸入 Email" v-model="auth.email" required="required")
         label(for="password") 密碼
         input#password.form-control(type="password" placeholder="請輸入密碼" v-model="auth.password" required="required")
